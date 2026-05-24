@@ -1,7 +1,7 @@
 //! Main entry point for rustbow
-use std::{collections::HashMap, process::exit};
+use std::collections::HashMap;
 
-use clap::{Parser, ValueEnum};
+use clap::Parser;
 use rustbow::{
     config::{Charset, CharsetTemplate, ColorConfigModifier, RustBowConfig, RustBowConfigModifier},
     run,
@@ -30,6 +30,10 @@ struct Args {
     /// Valid keys are the same as for foreground color configuration.
     #[clap(long = "bg")]
     bg_color_config: Option<String>,
+
+    /// The speed of the animation, in ms per character.
+    #[clap(long = "speed")]
+    speed_ms: Option<f32>,
 }
 
 impl Args {
@@ -61,6 +65,7 @@ impl Args {
             charset,
             foreground_config: Some(fg),
             background_config: bg,
+            speed_ms: self.speed_ms,
         })
     }
 }

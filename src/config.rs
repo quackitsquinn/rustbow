@@ -1,23 +1,30 @@
 //! Configuration for Rustbow.
 use clap::ValueEnum;
-use std::{borrow::Cow, str::FromStr, sync::Arc};
-
-use crate::ArcSlice;
+use std::borrow::Cow;
 
 /// Configuration for Rustbow.
 #[derive(Debug, Clone)]
 pub struct RustBowConfig {
     /// A string of characters to use instead of random characters. Default is "@#$%&?".
     pub charset: Charset,
+    /// The foreground color config.
     pub foreground: ColorConfig,
+    /// The background color config. If `None`, no background color will be used.
     pub background: Option<ColorConfig>,
+    /// The speed of the animation, in ms per character.
+    pub speed_ms: f32,
 }
 
+/// The configuration for a cycling color in Rustbow.
 #[derive(Debug, Clone, Copy)]
 pub struct ColorConfig {
+    /// The amount to increment the hue by.
     pub change_rate: f32,
+    /// The initial hue of the outputted colors, between 0 and 360.
     pub initial_hue: f32,
+    /// The saturation of the outputted colors, between 0 and 1.
     pub saturation: f32,
+    /// The value of the outputted colors, between 0 and 1.
     pub lightness: f32,
 }
 
@@ -58,6 +65,7 @@ impl RustBowConfig {
             background: modifier
                 .background_config
                 .map(|bg_mod| self.background.unwrap_or_default().modify_with(&bg_mod)),
+            speed_ms: modifier.speed_ms.unwrap_or(1.0),
         }
     }
 }
@@ -68,6 +76,7 @@ impl Default for RustBowConfig {
             charset: CharsetTemplate::Default.to_charset(),
             foreground: ColorConfig::default(),
             background: None,
+            speed_ms: 1.0,
         }
     }
 }
@@ -81,6 +90,8 @@ pub struct RustBowConfigModifier {
     pub foreground_config: Option<ColorConfigModifier>,
     /// The background color config modifier.
     pub background_config: Option<ColorConfigModifier>,
+    /// The speed of the animation, in ms per character.
+    pub speed_ms: Option<f32>,
 }
 
 /// A modifier for the ColorConfig. This is used to modify the color config with command line arguments.

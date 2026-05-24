@@ -1,14 +1,9 @@
 //! A terminal-based rainbow generator.
-use std::{io::Write, ops::Add, sync::mpsc};
+use std::{io::Write, sync::mpsc, time::Duration};
 
-use color::{Hsl, OpaqueColor, ProphotoRgb, Rgba8};
+use color::{Hsl, OpaqueColor, Rgba8};
 use crossterm::{execute, queue, style::Color};
-use rand::{
-    distr::{Alphanumeric, SampleString},
-    rngs::ThreadRng,
-    seq::IndexedRandom,
-    RngExt,
-};
+use rand::{rngs::ThreadRng, seq::IndexedRandom, RngExt};
 
 use crate::config::{Charset, RustBowConfig};
 
@@ -82,6 +77,16 @@ pub fn run(config: &RustBowConfig) -> anyhow::Result<()> {
 
     ctrlc::set_handler(move || {
         let _ = closer.send(());
+        // wait a few seconds, if we don't exit something has gone wrong and we should panic.
+        std::thread::sleep(Duration::from_secs(2));
+        let mut stdout = std::io::stdout();
+        let _ = execute!(
+            stdout,
+            crossterm::terminal::LeaveAlternateScreen,
+            crossterm::cursor::Show
+        );
+        println!("Failed to exit cleanly after Ctrl-C; exiting forcefully.");
+        std::process::exit(1);
     })?;
 
     execute!(
@@ -89,6 +94,10 @@ pub fn run(config: &RustBowConfig) -> anyhow::Result<()> {
         crossterm::terminal::EnterAlternateScreen,
         crossterm::cursor::Hide
     )?;
+
+    let dur = Duration::from_secs_f32(config.speed_ms / 1000.);
+    let mut now = std::time::Instant::now();
+    let mut next = now + dur;
     while should_close.try_recv().is_err() {
         let color = generator.next_fg_color();
         let chr = generator.next_char();
@@ -114,6 +123,13 @@ pub fn run(config: &RustBowConfig) -> anyhow::Result<()> {
         }
         queue!(stdout, crossterm::style::Print(chr))?;
         stdout.flush()?;
+        now = std::time::Instant::now();
+        if next > now {
+            std::thread::sleep(next - now);
+        } else {
+            // if we're behind schedule, skip sleeping to catch up.
+        }
+        next = now + dur;
     }
 
     execute!(
