@@ -1,3 +1,4 @@
+//! A terminal-based rainbow generator.
 use std::{io::Write, ops::Add};
 
 use color::{Hsl, OpaqueColor, ProphotoRgb, Rgba8};
@@ -8,8 +9,8 @@ use crate::config::RustBowConfig;
 
 pub mod config;
 
-pub type ArcSlice<T> = std::sync::Arc<[T]>;
-pub type ArcStr = std::sync::Arc<str>;
+pub(crate) type ArcSlice<T> = std::sync::Arc<[T]>;
+pub(crate) type ArcStr = std::sync::Arc<str>;
 
 struct Generator {
     rng: ThreadRng,
@@ -46,6 +47,7 @@ impl Generator {
     }
 }
 
+/// Runs the main loop of the program, generating random colors and characters and printing them to the terminal.
 pub fn run(config: &RustBowConfig) -> anyhow::Result<()> {
     let mut generator = Generator::new(config, crossterm::terminal::size().unwrap_or((20, 20)));
     let mut stdout = std::io::stdout();

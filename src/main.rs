@@ -1,3 +1,4 @@
+//! Main entry point for rustbow
 use clap::Parser;
 use rustbow::{
     config::{RustBowConfig, RustBowConfigModifier},

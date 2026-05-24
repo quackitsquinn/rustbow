@@ -1,15 +1,20 @@
-use std::path::Path;
-
+//! Configuration for Rustbow.
 use crate::ArcSlice;
 
+/// Configuration for Rustbow.
 pub struct RustBowConfig {
+    /// A string of characters to use instead of random characters. Default is "@#$%&?".
     pub charset: ArcSlice<char>,
+    /// The amount to increment the hue by. Default is 0.001.
     pub change_rate: f32,
+    /// The saturation of the outputted colors, between 0 and 1. Default is 1.
     pub saturation: f32,
+    /// The value of the outputted colors, between 0 and 1. Default is 1.
     pub lightness: f32,
 }
 
 impl RustBowConfig {
+    /// Modifies the config with the given modifier. If a field in the modifier is `None`, the original value is used.
     pub fn modify_with(&self, modifier: &RustBowConfigModifier) -> Self {
         Self {
             charset: modifier
@@ -35,6 +40,7 @@ impl Default for RustBowConfig {
     }
 }
 
+/// A modifier for the RustBowConfig. This is used to modify the config with command line arguments.
 #[derive(clap::Parser, serde_derive::Deserialize, serde_derive::Serialize, Debug)]
 pub struct RustBowConfigModifier {
     /// A string of characters to use instead of random characters. Default is "@#$%&?".
