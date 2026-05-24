@@ -3,9 +3,14 @@ use std::{io::Write, ops::Add};
 
 use color::{Hsl, OpaqueColor, ProphotoRgb, Rgba8};
 use crossterm::{execute, queue, style::Color};
-use rand::{rngs::ThreadRng, seq::IndexedRandom, RngExt};
+use rand::{
+    distr::{Alphanumeric, SampleString},
+    rngs::ThreadRng,
+    seq::IndexedRandom,
+    RngExt,
+};
 
-use crate::config::RustBowConfig;
+use crate::config::{Charset, RustBowConfig};
 
 pub mod config;
 
@@ -16,7 +21,7 @@ struct Generator {
     rng: ThreadRng,
     curr: OpaqueColor<Hsl>,
     change_rate: f32,
-    charset: ArcSlice<char>,
+    charset: Charset,
     term_dims: (u16, u16),
 }
 
@@ -37,7 +42,7 @@ impl Generator {
     }
 
     pub fn next_char(&mut self) -> char {
-        *self.charset.choose(&mut self.rng).unwrap()
+        *self.charset.chars.choose(&mut self.rng).unwrap() as char
     }
 
     pub fn next_pos(&mut self) -> (u16, u16) {
