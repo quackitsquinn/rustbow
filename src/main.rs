@@ -1,5 +1,5 @@
 //! Main entry point for rustbow
-use std::collections::HashMap;
+use std::{collections::HashMap, process::exit};
 
 use clap::{Parser, ValueEnum};
 use rustbow::{
@@ -83,12 +83,12 @@ fn parse_inline_color_str(cstr: &str) -> anyhow::Result<ColorConfigModifier> {
         Ok(attribs.get(key).map(|v| v.parse::<f32>()).transpose()?)
     };
 
-    Ok(ColorConfigModifier {
+    dbg!(Ok(ColorConfigModifier {
         change_rate: try_get_float("rate")?,
         initial_hue: try_get_float("h")?,
         saturation: try_get_float("s")?,
         lightness: try_get_float("l")?,
-    })
+    }))
 }
 
 #[derive(Parser, Clone)]
@@ -105,6 +105,8 @@ struct CharsetArgs {
 fn main() -> anyhow::Result<()> {
     let config = RustBowConfig::default();
     let arg_modifier = Args::parse().to_modifier()?;
+
+    println!("Running with arg_modifier: {:#?}", arg_modifier);
 
     let config = config.modify_with(&arg_modifier);
     println!("config: {:#?}", config);

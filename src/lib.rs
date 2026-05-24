@@ -1,5 +1,5 @@
 //! A terminal-based rainbow generator.
-use std::{io::Write, ops::Add};
+use std::{io::Write, ops::Add, sync::mpsc};
 
 use color::{Hsl, OpaqueColor, ProphotoRgb, Rgba8};
 use crossterm::{execute, queue, style::Color};
@@ -57,7 +57,7 @@ impl Generator {
 
     pub fn next_bg_color(&mut self) -> Option<Rgba8> {
         self.background.as_mut().map(|bg| {
-            *bg = bg.map_hue(|h| (h + self.fg_rate) % 360.);
+            *bg = bg.map_hue(|h| (h + self.bg_rate) % 360.);
             bg.to_rgba8()
         })
     }
@@ -78,12 +78,18 @@ pub fn run(config: &RustBowConfig) -> anyhow::Result<()> {
     let mut generator = Generator::new(config, crossterm::terminal::size().unwrap_or((20, 20)));
     let mut stdout = std::io::stdout();
 
+    let (closer, should_close) = mpsc::channel::<()>();
+
+    ctrlc::set_handler(move || {
+        let _ = closer.send(());
+    })?;
+
     execute!(
         stdout,
         crossterm::terminal::EnterAlternateScreen,
         crossterm::cursor::Hide
     )?;
-    loop {
+    while should_close.try_recv().is_err() {
         let color = generator.next_fg_color();
         let chr = generator.next_char();
         let pos = generator.next_pos();
@@ -109,4 +115,11 @@ pub fn run(config: &RustBowConfig) -> anyhow::Result<()> {
         queue!(stdout, crossterm::style::Print(chr))?;
         stdout.flush()?;
     }
+
+    execute!(
+        stdout,
+        crossterm::terminal::LeaveAlternateScreen,
+        crossterm::cursor::Show
+    )?;
+    Ok(())
 }

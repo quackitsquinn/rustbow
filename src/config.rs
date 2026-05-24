@@ -22,6 +22,7 @@ pub struct ColorConfig {
 }
 
 impl ColorConfig {
+    /// Modifies the config with the given modifier. If a field in the modifier is `None`, the original value is used.
     pub fn modify_with(&self, modifier: &ColorConfigModifier) -> Self {
         Self {
             change_rate: modifier.change_rate.unwrap_or(self.change_rate),
@@ -54,9 +55,9 @@ impl RustBowConfig {
             foreground: self
                 .foreground
                 .modify_with(&modifier.foreground_config.unwrap_or_default()),
-            background: self
-                .background
-                .map(|bg| bg.modify_with(&modifier.background_config.unwrap_or_default())),
+            background: modifier
+                .background_config
+                .map(|bg_mod| self.background.unwrap_or_default().modify_with(&bg_mod)),
         }
     }
 }
@@ -72,10 +73,13 @@ impl Default for RustBowConfig {
 }
 
 /// A modifier for the RustBowConfig. This is used to modify the config with command line arguments.
+#[derive(Debug, Clone)]
 pub struct RustBowConfigModifier {
     /// The template to use instead of random characters. use <TODO> to list the templates
     pub charset: Option<Charset>,
+    /// The foreground color config modifier.
     pub foreground_config: Option<ColorConfigModifier>,
+    /// The background color config modifier.
     pub background_config: Option<ColorConfigModifier>,
 }
 
