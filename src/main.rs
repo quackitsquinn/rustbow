@@ -1,52 +1,94 @@
 //! Main entry point for rustbow
+use std::collections::HashMap;
+
 use clap::{Parser, ValueEnum};
 use rustbow::{
-    config::{Charset, CharsetTemplate, RustBowConfig, RustBowConfigModifier},
+    config::{Charset, CharsetTemplate, ColorConfigModifier, RustBowConfig, RustBowConfigModifier},
     run,
 };
 
+/// RustBow: A colorful terminal animation of random characters.
 #[derive(Parser)]
 struct Args {
     #[clap(flatten)]
     charset: CharsetArgs,
-    /// The amount to increment the hue by per character. Default is 0.001.
-    #[clap(long, short = 't')]
-    change_rate: Option<f32>,
-    /// The saturation of the outputted colors, between 0 and 1. Default is 1.
-    #[clap(long, short = 's')]
-    saturation: Option<f32>,
-    /// The value of the outputted colors, between 0 and 1. Default is 1.
-    #[clap(long, short = 'l')]
-    lightness: Option<f32>,
+    /// Foreground color configuration in the format "key:value,key:value,...".
+    ///
+    /// Valid keys are the following:
+    ///
+    /// - `rate`: the change rate of the color (float)
+    ///
+    /// - `h`: the initial hue of the color (float)
+    ///
+    /// - `s`: the saturation of the color (float)
+    ///
+    /// - `l`: the lightness of the color (float)
+    #[clap(long = "fg")]
+    fg_color_config: Option<String>,
+    /// Background color configuration in the format "key:value,key:value,...".
+    ///
+    /// Valid keys are the same as for foreground color configuration.
+    #[clap(long = "bg")]
+    bg_color_config: Option<String>,
 }
 
 impl Args {
-    pub fn to_modifier(&self) -> RustBowConfigModifier {
-        match (
+    pub fn to_modifier(&self) -> anyhow::Result<RustBowConfigModifier> {
+        let fg = self
+            .fg_color_config
+            .as_deref()
+            .map(parse_inline_color_str)
+            .transpose()?
+            .unwrap_or_default();
+
+        let bg = self
+            .bg_color_config
+            .as_deref()
+            .map(parse_inline_color_str)
+            .transpose()?;
+
+        let charset = match (
             self.charset.template.as_ref(),
             self.charset.charset.as_ref(),
         ) {
-            (Some(template), None) => RustBowConfigModifier {
-                charset: Some(template.to_charset()),
-                change_rate: self.change_rate,
-                saturation: self.saturation,
-                value: self.lightness,
-            },
-            (None, Some(charset)) => RustBowConfigModifier {
-                charset: Some(Charset::owned(charset.chars().collect())),
-                change_rate: self.change_rate,
-                saturation: self.saturation,
-                value: self.lightness,
-            },
-            (None, None) => RustBowConfigModifier {
-                charset: None,
-                change_rate: self.change_rate,
-                saturation: self.saturation,
-                value: self.lightness,
-            },
+            (Some(template), None) => Some(template.to_charset()),
+            (None, Some(charset)) => Some(Charset::owned(charset.chars().collect())),
+            (None, None) => None,
             (Some(_), Some(_)) => unreachable!(),
-        }
+        };
+
+        Ok(RustBowConfigModifier {
+            charset,
+            foreground_config: Some(fg),
+            background_config: bg,
+        })
     }
+}
+
+fn parse_inline_color_str(cstr: &str) -> anyhow::Result<ColorConfigModifier> {
+    let parts = cstr.split(',').map(str::trim);
+    let mut attribs = HashMap::new();
+    for part in parts {
+        let mut kv = part.splitn(2, ':').map(str::trim);
+        let key = kv
+            .next()
+            .ok_or_else(|| anyhow::anyhow!("Invalid color config string: {cstr}"))?;
+        let value = kv
+            .next()
+            .ok_or_else(|| anyhow::anyhow!("Invalid color config string: {cstr}"))?;
+        attribs.insert(key, value);
+    }
+
+    let try_get_float = |key: &str| -> anyhow::Result<Option<f32>> {
+        Ok(attribs.get(key).map(|v| v.parse::<f32>()).transpose()?)
+    };
+
+    Ok(ColorConfigModifier {
+        change_rate: try_get_float("rate")?,
+        initial_hue: try_get_float("h")?,
+        saturation: try_get_float("s")?,
+        lightness: try_get_float("l")?,
+    })
 }
 
 #[derive(Parser, Clone)]
@@ -62,7 +104,8 @@ struct CharsetArgs {
 
 fn main() -> anyhow::Result<()> {
     let config = RustBowConfig::default();
-    let arg_modifier = Args::parse().to_modifier();
+    let arg_modifier = Args::parse().to_modifier()?;
+
     let config = config.modify_with(&arg_modifier);
     println!("config: {:#?}", config);
     run(&config)

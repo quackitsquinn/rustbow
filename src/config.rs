@@ -9,12 +9,38 @@ use crate::ArcSlice;
 pub struct RustBowConfig {
     /// A string of characters to use instead of random characters. Default is "@#$%&?".
     pub charset: Charset,
-    /// The amount to increment the hue by. Default is 0.001.
+    pub foreground: ColorConfig,
+    pub background: Option<ColorConfig>,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct ColorConfig {
     pub change_rate: f32,
-    /// The saturation of the outputted colors, between 0 and 1. Default is 1.
+    pub initial_hue: f32,
     pub saturation: f32,
-    /// The value of the outputted colors, between 0 and 1. Default is 1.
     pub lightness: f32,
+}
+
+impl ColorConfig {
+    pub fn modify_with(&self, modifier: &ColorConfigModifier) -> Self {
+        Self {
+            change_rate: modifier.change_rate.unwrap_or(self.change_rate),
+            initial_hue: modifier.initial_hue.unwrap_or(self.initial_hue),
+            saturation: modifier.saturation.unwrap_or(self.saturation),
+            lightness: modifier.lightness.unwrap_or(self.lightness),
+        }
+    }
+}
+
+impl Default for ColorConfig {
+    fn default() -> Self {
+        Self {
+            change_rate: 0.001,
+            initial_hue: 0.0,
+            saturation: 1.0,
+            lightness: 0.8,
+        }
+    }
 }
 
 impl RustBowConfig {
@@ -25,9 +51,12 @@ impl RustBowConfig {
                 .charset
                 .clone()
                 .unwrap_or_else(|| self.charset.clone()),
-            change_rate: modifier.change_rate.unwrap_or(self.change_rate),
-            saturation: modifier.saturation.unwrap_or(self.saturation),
-            lightness: modifier.value.unwrap_or(self.lightness),
+            foreground: self
+                .foreground
+                .modify_with(&modifier.foreground_config.unwrap_or_default()),
+            background: self
+                .background
+                .map(|bg| bg.modify_with(&modifier.background_config.unwrap_or_default())),
         }
     }
 }
@@ -36,9 +65,8 @@ impl Default for RustBowConfig {
     fn default() -> Self {
         Self {
             charset: CharsetTemplate::Default.to_charset(),
-            change_rate: 0.001,
-            saturation: 1.0,
-            lightness: 0.8,
+            foreground: ColorConfig::default(),
+            background: None,
         }
     }
 }
@@ -47,12 +75,21 @@ impl Default for RustBowConfig {
 pub struct RustBowConfigModifier {
     /// The template to use instead of random characters. use <TODO> to list the templates
     pub charset: Option<Charset>,
-    /// The amount to increment the hue by. Default is 0.001.
+    pub foreground_config: Option<ColorConfigModifier>,
+    pub background_config: Option<ColorConfigModifier>,
+}
+
+/// A modifier for the ColorConfig. This is used to modify the color config with command line arguments.
+#[derive(Debug, Clone, Copy, Default)]
+pub struct ColorConfigModifier {
+    /// The amount to increment the hue by.
     pub change_rate: Option<f32>,
-    /// The saturation of the outputted colors, between 0 and 1. Default is 1.
+    /// The initial hue of the outputted colors, between 0 and 360.
+    pub initial_hue: Option<f32>,
+    /// The saturation of the outputted colors, between 0 and 1.
     pub saturation: Option<f32>,
-    /// The value of the outputted colors, between 0 and 1. Default is 1.
-    pub value: Option<f32>,
+    /// The value of the outputted colors, between 0 and 1.
+    pub lightness: Option<f32>,
 }
 
 /// A character set.

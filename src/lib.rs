@@ -19,8 +19,10 @@ pub(crate) type ArcStr = std::sync::Arc<str>;
 
 struct Generator {
     rng: ThreadRng,
-    curr: OpaqueColor<Hsl>,
-    change_rate: f32,
+    foreground: OpaqueColor<Hsl>,
+    background: Option<OpaqueColor<Hsl>>,
+    fg_rate: f32,
+    bg_rate: f32,
     charset: Charset,
     term_dims: (u16, u16),
 }
@@ -29,20 +31,39 @@ impl Generator {
     pub fn new(config: &RustBowConfig, term_dims: (u16, u16)) -> Self {
         Self {
             rng: rand::rng(),
-            curr: OpaqueColor::new([0.0, config.saturation * 100., config.lightness * 100.]),
-            change_rate: config.change_rate,
+            foreground: OpaqueColor::new([
+                config.foreground.initial_hue,
+                config.foreground.saturation * 100.,
+                config.foreground.lightness * 100.,
+            ]),
+            background: config.background.map(|bg| {
+                OpaqueColor::new([bg.initial_hue, bg.saturation * 100., bg.lightness * 100.])
+            }),
+            fg_rate: config.foreground.change_rate,
+            bg_rate: config
+                .background
+                .map(|bg| bg.change_rate)
+                .unwrap_or(config.foreground.change_rate),
+
             charset: config.charset.clone(),
             term_dims,
         }
     }
 
-    pub fn next_color(&mut self) -> Rgba8 {
-        self.curr = self.curr.map_hue(|h| (h + self.change_rate) % 360.);
-        self.curr.to_rgba8()
+    pub fn next_fg_color(&mut self) -> Rgba8 {
+        self.foreground = self.foreground.map_hue(|h| (h + self.fg_rate) % 360.);
+        self.foreground.to_rgba8()
+    }
+
+    pub fn next_bg_color(&mut self) -> Option<Rgba8> {
+        self.background.as_mut().map(|bg| {
+            *bg = bg.map_hue(|h| (h + self.fg_rate) % 360.);
+            bg.to_rgba8()
+        })
     }
 
     pub fn next_char(&mut self) -> char {
-        *self.charset.chars.choose(&mut self.rng).unwrap() as char
+        *self.charset.chars.choose(&mut self.rng).unwrap()
     }
 
     pub fn next_pos(&mut self) -> (u16, u16) {
@@ -63,7 +84,7 @@ pub fn run(config: &RustBowConfig) -> anyhow::Result<()> {
         crossterm::cursor::Hide
     )?;
     loop {
-        let color = generator.next_color();
+        let color = generator.next_fg_color();
         let chr = generator.next_char();
         let pos = generator.next_pos();
         queue!(
@@ -74,8 +95,18 @@ pub fn run(config: &RustBowConfig) -> anyhow::Result<()> {
                 g: color.g,
                 b: color.b
             }),
-            crossterm::style::Print(chr)
         )?;
+        if let Some(bg_color) = generator.next_bg_color() {
+            queue!(
+                stdout,
+                crossterm::style::SetBackgroundColor(Color::Rgb {
+                    r: bg_color.r,
+                    g: bg_color.g,
+                    b: bg_color.b
+                }),
+            )?;
+        }
+        queue!(stdout, crossterm::style::Print(chr))?;
         stdout.flush()?;
     }
 }
