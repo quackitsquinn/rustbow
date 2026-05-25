@@ -72,12 +72,17 @@ impl Args {
 
 fn parse_inline_color_str(cstr: &str) -> anyhow::Result<ColorConfigModifier> {
     let parts = cstr.split(',').map(str::trim);
+
     let mut attribs = HashMap::new();
     for part in parts {
         let mut kv = part.splitn(2, ':').map(str::trim);
         let key = kv
             .next()
             .ok_or_else(|| anyhow::anyhow!("Invalid color config string: {cstr}"))?;
+        match key {
+            "rate" | "h" | "s" | "l" => {}
+            _ => anyhow::bail!("Unknown color config key `{key}` in `{cstr}`"),
+        }
         let value = kv
             .next()
             .ok_or_else(|| anyhow::anyhow!("Invalid color config string: {cstr}"))?;
@@ -88,18 +93,18 @@ fn parse_inline_color_str(cstr: &str) -> anyhow::Result<ColorConfigModifier> {
         Ok(attribs.get(key).map(|v| v.parse::<f32>()).transpose()?)
     };
 
-    dbg!(Ok(ColorConfigModifier {
+    Ok(ColorConfigModifier {
         change_rate: try_get_float("rate")?,
         initial_hue: try_get_float("h")?,
         saturation: try_get_float("s")?,
         lightness: try_get_float("l")?,
-    }))
+    })
 }
 
 #[derive(Parser, Clone)]
 #[group(multiple = false)]
 struct CharsetArgs {
-    /// The template name to use instead of random characters. use <TODO> to list the templates
+    /// The template name to use instead of random characters.
     #[clap(long, group = "charset_template")]
     template: Option<CharsetTemplate>,
     /// A string of characters to use instead of random characters. Default is "@#$%&?".
@@ -110,10 +115,9 @@ struct CharsetArgs {
 fn main() -> anyhow::Result<()> {
     let config = RustBowConfig::default();
     let arg_modifier = Args::parse().to_modifier()?;
-
-    println!("Running with arg_modifier: {:#?}", arg_modifier);
-
     let config = config.modify_with(&arg_modifier);
-    println!("config: {:#?}", config);
+
+    println!("Running RustBow with config: {:#?}", config);
+
     run(&config)
 }

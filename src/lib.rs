@@ -9,9 +9,6 @@ use crate::config::{Charset, RustBowConfig};
 
 pub mod config;
 
-pub(crate) type ArcSlice<T> = std::sync::Arc<[T]>;
-pub(crate) type ArcStr = std::sync::Arc<str>;
-
 struct Generator {
     rng: ThreadRng,
     foreground: OpaqueColor<Hsl>,

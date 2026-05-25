@@ -76,7 +76,7 @@ impl Default for RustBowConfig {
             charset: CharsetTemplate::Default.to_charset(),
             foreground: ColorConfig::default(),
             background: None,
-            speed_ms: 1.0,
+            speed_ms: 0.0,
         }
     }
 }
@@ -139,6 +139,8 @@ pub enum CharsetTemplate {
     Blocks,
     /// A character set of corners.
     Corners,
+    /// Corners and blocks, including a white space char.
+    CornerBlock,
 }
 
 impl CharsetTemplate {
@@ -148,6 +150,8 @@ impl CharsetTemplate {
     pub const BLOCKS: &'static [char] = &['█', '▒', '░']; // block chars: █▓▒░
     /// A character set of corners.
     pub const CORNERS: &'static [char] = &['▘', '▝', '▖', '▗']; // corner chars: ▘▝▖▗
+    /// Corners and blocks, including a white space char.
+    pub const CORNER_BLOCK: &'static [char] = &[' ', '█', '▒', '░', '▘', '▝', '▖', '▗']; // corner and block chars: " █▓▒░▘▝▖▗"
 
     /// Converts the template to a charset.
     pub const fn to_charset(&self) -> Charset {
@@ -155,6 +159,7 @@ impl CharsetTemplate {
             Self::Default => Charset::borrowed(Self::DEFAULT),
             Self::Blocks => Charset::borrowed(Self::BLOCKS),
             Self::Corners => Charset::borrowed(Self::CORNERS),
+            Self::CornerBlock => Charset::borrowed(Self::CORNER_BLOCK),
         }
     }
 }
