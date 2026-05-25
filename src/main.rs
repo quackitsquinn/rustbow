@@ -31,9 +31,13 @@ struct Args {
     #[clap(long = "bg")]
     bg_color_config: Option<String>,
 
-    /// The speed of the animation, in ms per character.
+    /// The speed of the animation. In the format of <fps>:<chars_per_frame>.
+    /// For example, `--speed 60:5` means to run the animation at 60 frames per second and print 5 characters per frame.
+    ///
+    /// Zero or negative fps means to run as fast as possible. If chars_per_frame is zero, it defaults to 3.
     #[clap(long = "speed")]
-    speed_ms: Option<f32>,
+    #[clap(value_parser = parse_speed)]
+    speed: Option<(f32, u32)>,
 }
 
 impl Args {
@@ -65,7 +69,8 @@ impl Args {
             charset,
             foreground_config: Some(fg),
             background_config: bg,
-            speed_ms: self.speed_ms,
+            frames_per_second: self.speed.map(|(fps, _)| fps),
+            chars_per_frame: self.speed.map(|(_, cpf)| cpf as usize),
         })
     }
 }
@@ -99,6 +104,21 @@ fn parse_inline_color_str(cstr: &str) -> anyhow::Result<ColorConfigModifier> {
         saturation: try_get_float("s")?,
         lightness: try_get_float("l")?,
     })
+}
+
+fn parse_speed(speed_str: &str) -> anyhow::Result<(f32, u32)> {
+    let mut parts = speed_str.split(':').map(str::trim);
+    let fps_str = parts
+        .next()
+        .ok_or_else(|| anyhow::anyhow!("Invalid speed string: {speed_str}"))?;
+    let chars_per_frame_str = parts
+        .next()
+        .ok_or_else(|| anyhow::anyhow!("Invalid speed string: {speed_str}"))?;
+
+    let fps = fps_str.parse::<f32>()?.max(0.0);
+    let chars_per_frame = chars_per_frame_str.parse::<u32>()?;
+
+    Ok((fps, chars_per_frame))
 }
 
 #[derive(Parser, Clone)]

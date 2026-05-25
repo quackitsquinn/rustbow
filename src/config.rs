@@ -11,8 +11,10 @@ pub struct RustBowConfig {
     pub foreground: ColorConfig,
     /// The background color config. If `None`, no background color will be used.
     pub background: Option<ColorConfig>,
-    /// The speed of the animation, in ms per character.
-    pub speed_ms: f32,
+    /// The number of frames per second to run the animation at. Default is 0, which means to run as fast as possible.
+    pub frames_per_second: f32,
+    /// The number of characters to print per frame. Default is 3.
+    pub chars_per_frame: usize,
 }
 
 /// The configuration for a cycling color in Rustbow.
@@ -65,7 +67,8 @@ impl RustBowConfig {
             background: modifier
                 .background_config
                 .map(|bg_mod| self.background.unwrap_or_default().modify_with(&bg_mod)),
-            speed_ms: modifier.speed_ms.unwrap_or(1.0),
+            frames_per_second: modifier.frames_per_second.unwrap_or(self.frames_per_second),
+            chars_per_frame: modifier.chars_per_frame.unwrap_or(self.chars_per_frame),
         }
     }
 }
@@ -76,7 +79,8 @@ impl Default for RustBowConfig {
             charset: CharsetTemplate::Default.to_charset(),
             foreground: ColorConfig::default(),
             background: None,
-            speed_ms: 0.0,
+            frames_per_second: 0.0,
+            chars_per_frame: 3,
         }
     }
 }
@@ -90,8 +94,10 @@ pub struct RustBowConfigModifier {
     pub foreground_config: Option<ColorConfigModifier>,
     /// The background color config modifier.
     pub background_config: Option<ColorConfigModifier>,
-    /// The speed of the animation, in ms per character.
-    pub speed_ms: Option<f32>,
+    /// The number of frames per second to run the animation at. Default is 0, which means to run as fast as possible.
+    pub frames_per_second: Option<f32>,
+    /// The number of characters to print per frame. Default is 3.
+    pub chars_per_frame: Option<usize>,
 }
 
 /// A modifier for the ColorConfig. This is used to modify the color config with command line arguments.

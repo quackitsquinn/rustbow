@@ -63,6 +63,44 @@ impl Generator {
         let y = self.rng.random_range(0..self.term_dims.1);
         (x, y)
     }
+
+    pub fn output_char(&mut self, stdout: &mut impl Write) -> anyhow::Result<()> {
+        let color = self.next_fg_color();
+        let chr = self.next_char();
+        let pos = self.next_pos();
+        queue!(
+            stdout,
+            crossterm::cursor::MoveTo(pos.0, pos.1),
+            crossterm::style::SetForegroundColor(Color::Rgb {
+                r: color.r,
+                g: color.g,
+                b: color.b
+            }),
+        )?;
+        if let Some(bg_color) = self.next_bg_color() {
+            queue!(
+                stdout,
+                crossterm::style::SetBackgroundColor(Color::Rgb {
+                    r: bg_color.r,
+                    g: bg_color.g,
+                    b: bg_color.b
+                }),
+            )?;
+        }
+        queue!(stdout, crossterm::style::Print(chr))?;
+        Ok(())
+    }
+
+    pub fn output_frame(
+        &mut self,
+        stdout: &mut impl Write,
+        chars_per_frame: usize,
+    ) -> anyhow::Result<()> {
+        for _ in 0..chars_per_frame {
+            self.output_char(stdout)?;
+        }
+        Ok(())
+    }
 }
 
 /// Runs the main loop of the program, generating random colors and characters and printing them to the terminal.
@@ -92,41 +130,23 @@ pub fn run(config: &RustBowConfig) -> anyhow::Result<()> {
         crossterm::cursor::Hide
     )?;
 
-    let dur = Duration::from_secs_f32(config.speed_ms / 1000.);
+    let frame_duration = if config.frames_per_second > 0. {
+        Duration::from_secs_f32(1. / config.frames_per_second)
+    } else {
+        Duration::from_secs(0)
+    };
+
     let mut now = std::time::Instant::now();
-    let mut next = now + dur;
+    let mut next = now + frame_duration;
     while should_close.try_recv().is_err() {
-        let color = generator.next_fg_color();
-        let chr = generator.next_char();
-        let pos = generator.next_pos();
-        queue!(
-            stdout,
-            crossterm::cursor::MoveTo(pos.0, pos.1),
-            crossterm::style::SetForegroundColor(Color::Rgb {
-                r: color.r,
-                g: color.g,
-                b: color.b
-            }),
-        )?;
-        if let Some(bg_color) = generator.next_bg_color() {
-            queue!(
-                stdout,
-                crossterm::style::SetBackgroundColor(Color::Rgb {
-                    r: bg_color.r,
-                    g: bg_color.g,
-                    b: bg_color.b
-                }),
-            )?;
-        }
-        queue!(stdout, crossterm::style::Print(chr))?;
+        generator.output_frame(&mut stdout, config.chars_per_frame)?;
         stdout.flush()?;
+
         now = std::time::Instant::now();
         if next > now {
             std::thread::sleep(next - now);
-        } else {
-            // if we're behind schedule, skip sleeping to catch up.
         }
-        next = now + dur;
+        next += frame_duration;
     }
 
     execute!(
