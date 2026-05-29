@@ -1,5 +1,4 @@
 //! A module for generating colors for the RustBow animation.
-use std::str::FromStr;
 
 use color::{Hsl, OpaqueColor, Rgba8};
 use rand::rngs::ThreadRng;

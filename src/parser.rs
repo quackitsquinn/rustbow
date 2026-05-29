@@ -1,8 +1,6 @@
 //! Utils for parsing CLI arguments.
 
-use std::{collections::HashMap, str::FromStr, sync::Arc};
-
-use crate::config::{ColorGeneratorConfig, ConfigSet};
+use crate::config::ColorGeneratorConfig;
 
 /// The default color generator type to use if not specified in the config string.
 pub const DEFAULT_COLOR_GEN_TYPE: &str = "hue_shift";
@@ -35,24 +33,6 @@ fn leading_component(s: &str) -> Option<(&str, &str)> {
     }
 }
 
-fn parse_attribute_map(map: &str) -> anyhow::Result<HashMap<Arc<str>, Arc<str>>> {
-    let mut attributes = HashMap::new();
-
-    for part in map.split(',').map(str::trim) {
-        let mut kv = part.splitn(2, ':').map(str::trim);
-        let key = kv
-            .next()
-            .ok_or_else(|| anyhow::anyhow!("Invalid attribute map: {map}"))?;
-        let value = kv
-            .next()
-            .ok_or_else(|| anyhow::anyhow!("Invalid color config string: {map}"))?;
-
-        attributes.insert(key.into(), value.into());
-    }
-
-    Ok(attributes)
-}
-
 #[cfg(test)]
 mod tests {
     use color::OpaqueColor;
@@ -83,7 +63,7 @@ mod tests {
                 assert_eq!(hue_cfg.rate, 0.1);
                 assert_eq!(hue_cfg.initial_color, OpaqueColor::new([0., 1., 0.5]));
             }
-
+            #[allow(unreachable_patterns)] // future
             _ => panic!("Expected HueShift config"),
         }
     }

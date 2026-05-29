@@ -5,16 +5,9 @@ use std::{
     time::Duration,
 };
 
-use color::{Hsl, OpaqueColor, Rgba8};
-use crossterm::{execute, queue, style::Color};
-use rand::{rngs::ThreadRng, seq::IndexedRandom, RngExt};
+use crossterm::execute;
 
-use crate::{
-    color_gen::{ColorGenerator, HueShiftGenerator},
-    config::{Charset, RustBowConfig},
-    frame::FrameTracker,
-    render::Renderer,
-};
+use crate::{config::RustBowConfig, frame::FrameTracker, render::Renderer};
 
 pub mod color_gen;
 pub mod config;

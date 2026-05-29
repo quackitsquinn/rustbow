@@ -1,5 +1,4 @@
 //! Main entry point for rustbow
-use std::collections::HashMap;
 
 use clap::Parser;
 use rustbow::{

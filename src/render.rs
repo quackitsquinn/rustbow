@@ -1,15 +1,10 @@
-use std::{
-    io::{BufWriter, Write},
-    sync::mpsc,
-    time::Duration,
-};
+use std::io::Write;
 
-use color::{Hsl, OpaqueColor, Rgba8};
-use crossterm::{execute, queue, style::Color};
+use crossterm::{queue, style::Color};
 use rand::{rngs::ThreadRng, seq::IndexedRandom, RngExt};
 
 use crate::{
-    color_gen::{ColorGenerator, HueShiftGenerator},
+    color_gen::ColorGenerator,
     config::{Charset, RustBowConfig},
 };
 

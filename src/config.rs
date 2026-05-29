@@ -1,7 +1,6 @@
 //! Configuration for Rustbow.
 use anyhow::Context;
 use clap::ValueEnum;
-use color::{Hsl, OpaqueColor};
 use std::{borrow::Cow, collections::HashMap, str::FromStr, sync::Arc};
 
 use crate::color_gen::{ColorGenerator, HueShiftConfig, HueShiftGenerator};
