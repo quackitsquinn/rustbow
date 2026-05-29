@@ -3,7 +3,10 @@ use std::collections::HashMap;
 
 use clap::Parser;
 use rustbow::{
-    config::{Charset, CharsetTemplate, ColorConfigModifier, RustBowConfig, RustBowConfigModifier},
+    config::{
+        Charset, CharsetTemplate, ColorGeneratorConfig, RustBowConfig, RustBowConfigModifier,
+    },
+    parser::parse_color_str,
     run,
 };
 
@@ -24,12 +27,14 @@ struct Args {
     ///
     /// - `l`: the lightness of the color (float)
     #[clap(long = "fg")]
-    fg_color_config: Option<String>,
+    #[clap(value_parser = parse_color_str)]
+    fg_color_config: Option<ColorGeneratorConfig>,
     /// Background color configuration in the format "key:value,key:value,...".
     ///
     /// Valid keys are the same as for foreground color configuration.
     #[clap(long = "bg")]
-    bg_color_config: Option<String>,
+    #[clap(value_parser = parse_color_str)]
+    bg_color_config: Option<ColorGeneratorConfig>,
 
     /// The speed of the animation. In the format of <fps>:<chars_per_frame>.
     /// For example, `--speed 60:5` means to run the animation at 60 frames per second and print 5 characters per frame.
@@ -42,24 +47,14 @@ struct Args {
 
 impl Args {
     pub fn to_modifier(&self) -> anyhow::Result<RustBowConfigModifier> {
-        let fg = self
-            .fg_color_config
-            .as_deref()
-            .map(parse_inline_color_str)
-            .transpose()?
-            .unwrap_or_default();
-
-        let bg = self
-            .bg_color_config
-            .as_deref()
-            .map(parse_inline_color_str)
-            .transpose()?;
+        let fg = self.fg_color_config;
+        let bg = Some(self.bg_color_config);
 
         let charset = match (
             self.charset.template.as_ref(),
             self.charset.charset.as_ref(),
         ) {
-            (Some(template), None) => Some(template.to_charset()),
+            (Some(template), None) => Some(template.build_charset()),
             (None, Some(charset)) => Some(Charset::owned(charset.chars().collect())),
             (None, None) => None,
             (Some(_), Some(_)) => unreachable!(),
@@ -67,43 +62,12 @@ impl Args {
 
         Ok(RustBowConfigModifier {
             charset,
-            foreground_config: Some(fg),
-            background_config: bg,
+            foreground_config: fg,
+            background_config: bg.flatten(),
             frames_per_second: self.speed.map(|(fps, _)| fps),
             chars_per_frame: self.speed.map(|(_, cpf)| cpf as usize),
         })
     }
-}
-
-fn parse_inline_color_str(cstr: &str) -> anyhow::Result<ColorConfigModifier> {
-    let parts = cstr.split(',').map(str::trim);
-
-    let mut attribs = HashMap::new();
-    for part in parts {
-        let mut kv = part.splitn(2, ':').map(str::trim);
-        let key = kv
-            .next()
-            .ok_or_else(|| anyhow::anyhow!("Invalid color config string: {cstr}"))?;
-        match key {
-            "rate" | "h" | "s" | "l" => {}
-            _ => anyhow::bail!("Unknown color config key `{key}` in `{cstr}`"),
-        }
-        let value = kv
-            .next()
-            .ok_or_else(|| anyhow::anyhow!("Invalid color config string: {cstr}"))?;
-        attribs.insert(key, value);
-    }
-
-    let try_get_float = |key: &str| -> anyhow::Result<Option<f32>> {
-        Ok(attribs.get(key).map(|v| v.parse::<f32>()).transpose()?)
-    };
-
-    Ok(ColorConfigModifier {
-        change_rate: try_get_float("rate")?,
-        initial_hue: try_get_float("h")?,
-        saturation: try_get_float("s")?,
-        lightness: try_get_float("l")?,
-    })
 }
 
 fn parse_speed(speed_str: &str) -> anyhow::Result<(f32, u32)> {
