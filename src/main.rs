@@ -100,7 +100,5 @@ fn main() -> anyhow::Result<()> {
     let arg_modifier = Args::parse().to_modifier()?;
     let config = config.modify_with(&arg_modifier);
 
-    println!("Running RustBow with config: {:#?}", config);
-
     run(&config)
 }
